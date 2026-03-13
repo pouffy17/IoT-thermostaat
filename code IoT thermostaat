@@ -1,0 +1,124 @@
+#define BLYNK_TEMPLATE_ID "TMPL5rfBgnlkm"
+#define BLYNK_TEMPLATE_NAME "esp32"
+#define BLYNK_AUTH_TOKEN "MvSICdB2HOaH6qwY5WRbz1hAXIbE698n"
+
+
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+#include <DHT.h>
+#include <LiquidCrystal_I2C.h>
+
+
+#define DHTPIN 5
+#define DHTTYPE DHT11
+
+#define POT_PIN 1
+#define BOILER_LED 6
+
+// I2C LCD op ESP32-C6
+// SDA = GPIO8
+// SCL = GPIO9
+
+
+char ssid[] = "embed";
+char pass[] = "weareincontrol";
+
+// BLYNK VIRTUAL PINS 
+// V3 = temperatuur
+// V4 = ketelstatus
+// V5 = remote setpoint slider
+
+float t_meas = 0.0;
+float t_set_local = 20.0;
+float t_set_remote = -1;  
+bool boiler_on = false;
+bool blynk_online = false;
+
+DHT dht(DHTPIN, DHTTYPE);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+
+BLYNK_CONNECTED() {
+  blynk_online = true;
+}
+
+BLYNK_DISCONNECTED() {
+  blynk_online = false;
+}
+
+BLYNK_WRITE(V5) {
+  t_set_remote = param.asFloat();
+}
+
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(BOILER_LED, OUTPUT);
+  digitalWrite(BOILER_LED, LOW);
+
+  dht.begin();
+
+  Wire.begin(8, 9);
+  lcd.init();
+  lcd.backlight();
+
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+}
+
+
+void loop() {
+  Blynk.run();
+
+  static unsigned long lastRead = 0;
+  if (millis() - lastRead > 1000) {
+    lastRead = millis();
+
+    
+    float t = dht.readTemperature();
+    if (!isnan(t)) t_meas = t;
+
+    
+    int adc = analogRead(POT_PIN);
+    t_set_local = (adc / 3300.0) * 30.0;   
+
+    
+    float t_set;
+    if (blynk_online && t_set_remote >= 0) {
+      t_set = t_set_remote;     
+    } else {
+      t_set = t_set_local;      
+    }
+
+    
+    if (t_meas < t_set - 0.5) boiler_on = true;
+    else if (t_meas > t_set + 0.5) boiler_on = false;
+
+    digitalWrite(BOILER_LED, boiler_on ? HIGH : LOW);
+
+  
+    if (blynk_online) {
+      Blynk.virtualWrite(V3, t_meas);
+      Blynk.virtualWrite(V4, boiler_on ? 1 : 0);
+    }
+
+   
+    lcd.clear();
+
+    lcd.setCursor(0, 0);
+    lcd.print("T:");
+    lcd.print(t_meas, 1);
+    lcd.print("C   ");
+
+    lcd.print("S:");
+    lcd.print(t_set, 1);
+    lcd.print("   ");
+
+    lcd.setCursor(0, 1);
+    lcd.print("Ketel:");
+    lcd.print(boiler_on ? "AAN " : "UIT ");
+
+    
+    lcd.print(blynk_online ? " R " : " L ");
+  }
+}
