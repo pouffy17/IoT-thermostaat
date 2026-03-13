@@ -1,0 +1,48 @@
+ PROJECTUITLEG :
+
+Slimme Thermostaat met Automatische Fallback
+Je hebt een slimme thermostaat gebouwd op een ESP32‑C6 die zowel lokaal als op afstand kan werken.
+Het systeem combineert:
+een DHT11 temperatuursensor
+een potentiometer voor lokaal setpoint
+een Blynk‑slider voor remote setpoint
+een LED als simulatie van een verwarmingsketel
+een LCD‑scherm voor weergave
+automatische fallback tussen lokaal en remote
+
+
+Wat doet de thermostaat?
+De thermostaat meet:
+- de actuele temperatuur via de DHT11
+- de gewenste temperatuur via:
+- de potmeter (lokaal)
+- of de Blynk‑slider (remote)
+Daarna beslist hij:
+- Ketel AAN als de kamer te koud is
+- Ketel UIT als de kamer warm genoeg is
+De LED simuleert de ketel.
+
+
+2. Hoe werkt de automatische fallback 
+Dit is het slimme deel.
+De ESP32 kijkt voortdurend:
+Is Blynk verbonden?
+Dan gebruikt hij de slider als setpoint
+LCD toont R (remote)
+Is Blynk niet verbonden?
+Dan gebruikt hij de potmeter
+LCD toont L (local)
+Je hoeft dus niets manueel om te schakelen.
+De ESP32 kiest automatisch de beste bron.
+
+
+Wat doet Blynk?
+In de Blynk‑app heb je:
+Slider op V5 dus is de gewenste temperatuur
+Label op V3 dus is de actuele temperatuur
+LED op V4 ketelstatus
+Blynk stuurt de gewenste temperatuur naar de ESP32.
+De ESP32 stuurt terug:
+de gemeten temperatuur
+de ketelstatus
+Zo kun je op afstand zien wat er gebeurt.
